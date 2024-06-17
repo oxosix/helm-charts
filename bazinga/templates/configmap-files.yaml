@@ -1,0 +1,20 @@
+{{ if .Values.volumes.configmap }}
+{{ range .Values.volumes.configmap }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ $.Values.service_name }}-{{ .name }}
+  labels:
+    app: {{ $.Values.service_name }}
+    app.kubernetes.io/managed-by: helm
+    app.kubernetes.io/name: {{ $.Values.service_name }}
+    app.kubernetes.io/part-of: {{ $.Values.project_name }}
+    app.kubernetes.io/version: {{ $.Values.image.tag | quote }}
+    environment: {{ $.Values.environment }}
+    version: {{ $.Values.image.tag | quote }}
+    owner: {{ $.Values.owner }}
+data:
+{{ toYaml .files | indent 2}}
+---
+{{ end }}
+{{ end }}

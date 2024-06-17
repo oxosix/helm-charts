@@ -1,0 +1,26 @@
+{{- if and ( eq .Values.autoScaling.enabled true) ( eq .Values.autoScaling.keda.enabled true) -}}
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: {{ .Values.service_name }}
+  labels:
+    app: {{ .Values.service_name | quote }}
+    environment: {{ .Values.environment | quote }}
+    app.kubernetes.io/managed-by: helm
+    app.kubernetes.io/name: {{ .Values.service_name | quote }}
+    app.kubernetes.io/version: {{ .Values.image.tag | quote }}
+    app.kubernetes.io/part-of: {{  .Values.project_name | quote }}
+    product:  {{  .Values.product | quote }}
+    version: {{ .Values.image.tag | quote }}
+    owner: {{  .Values.owner | quote }}
+spec:
+  scaleTargetRef:
+    name: {{ .Values.service_name }}
+    envSourceContainerName: {{ .Values.service_name }}
+  pollingInterval: {{ .Values.autoScaling.keda.pollingInterval }}
+  cooldownPeriod: {{ .Values.autoScaling.keda.cooldownPeriod }}
+  minReplicaCount: {{ .Values.autoScaling.minReplicas }}
+  maxReplicaCount: {{ .Values.autoScaling.maxReplicas }}
+  triggers:
+{{ toYaml .Values.autoScaling.keda.triggers | indent 4 }}
+{{- end }}

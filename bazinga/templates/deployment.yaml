@@ -1,0 +1,194 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ required "Adicione o valor 'service_name' no arquivo blueprint-chart-variables.yaml do seu projeto. Este valor é obrigatório." .Values.service_name }}
+  labels:
+    app: {{ .Values.service_name }}
+    environment: {{ .Values.environment }}
+    app.kubernetes.io/managed-by: helm
+    app.kubernetes.io/name: {{ .Values.service_name }}
+    app.kubernetes.io/version: {{ .Values.image.tag | quote }}
+    app.kubernetes.io/part-of: {{ required "Adicione o valor 'project_name' no arquivo blueprint-chart-variables.yaml do seu projeto. Este valor é obrigatório." .Values.project_name }}
+    product:  {{ required "Adicione o valor 'product' no arquivo blueprint-chart-variables.yaml do seu projeto. Este valor é obrigatório." .Values.product }}
+    version: {{ .Values.image.tag | quote }}
+    owner: {{ required "Adicione o valor 'owner' no arquivo blueprint-chart-variables.yaml do seu projeto. Este valor é obrigatório." .Values.owner }}
+  annotations:
+    configmap.reloader.stakater.com/reload: "{{ .Values.service_name }}" 
+    secret.reloader.stakater.com/reload: "{{ .Values.service_name }}"
+    {{- if .Values.deployment.annotations }}
+    {{- toYaml .Values.deployment.annotations | nindent 4 }}
+    {{- end }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  strategy:
+    {{- if .Values.rollingUpdate.enabled }}
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: {{ .Values.rollingUpdate.maxSurge | quote }}
+      maxUnavailable: {{ .Values.rollingUpdate.maxUnavailable | quote }}
+    {{- else }}
+    type: Recreate
+    {{- end }}
+  selector:
+    matchLabels:
+      app: {{ .Values.service_name }}
+      environment: {{ .Values.environment }}
+  revisionHistoryLimit: 5
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.service_name }}
+        environment: {{ .Values.environment }}
+        app.kubernetes.io/managed-by: helm
+        app.kubernetes.io/name: {{ .Values.service_name }}
+        app.kubernetes.io/version: {{ .Values.image.tag | quote }}
+        app.kubernetes.io/part-of: {{  .Values.project_name }}
+        product:  {{ .Values.product }}
+        version: {{ .Values.image.tag | quote }}
+        owner: {{ .Values.owner }}
+    spec:
+      serviceAccountName: {{ .Values.service_name }}
+      terminationGracePeriodSeconds: 20
+      {{- if .Values.tolerations }}
+      tolerations:
+{{ toYaml .Values.tolerations | indent 8 }}
+      {{- end }}
+      nodeSelector:
+      {{- if .Values.nodeSelector }}
+{{ toYaml .Values.nodeSelector | indent 8 }}
+      {{- end }}
+      {{- if .Values.multi_az }}
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - {{ .Values.service_name }}
+              topologyKey: failure-domain.beta.kubernetes.io/zone
+            weight: 100
+          - podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - {{ .Values.service_name }}
+              topologyKey: kubernetes.io/hostname
+            weight: 90
+      {{- end }}
+      {{- if .Values.hostAliases }}            
+      hostAliases:
+      {{- range .Values.hostAliases }}
+      - ip: {{ .ip }}
+        hostnames:
+        {{- range .hostnames }}
+        - {{ . }}
+        {{- end}}
+      {{- end }}
+      {{- end }}
+      containers:
+      - name: {{ .Values.service_name }}
+        image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        {{- if .Values.deployment.entrypoint.command }}
+        command: {{ .Values.deployment.entrypoint.command }}
+        {{- end }}
+        {{- if .Values.deployment.entrypoint.args }}
+        args: {{ .Values.deployment.entrypoint.args }}
+        {{- end }}
+        {{- if .Values.containerPort }}
+        ports:
+        - name: {{ .Values.containerPortName }}
+          protocol: TCP
+          containerPort: {{ .Values.containerPort }}
+        {{- end }}
+        {{- if .Values.healthCheck.enabled }}
+        livenessProbe:
+          failureThreshold: {{ .Values.healthCheck.failureThresholdHealthCheck }}
+          httpGet:
+            path: {{ .Values.healthCheck.pathHealthCheck }}
+            port: {{ .Values.containerPortName }}
+            scheme: HTTP
+          initialDelaySeconds: {{ .Values.healthCheck.initialDelayHealthCheck }}
+          periodSeconds: {{ .Values.healthCheck.periodHealthCheck }}
+          successThreshold: {{ .Values.healthCheck.successThresholdHealthCheck }}
+          timeoutSeconds: {{ .Values.healthCheck.timeoutHealthCheck }}
+        readinessProbe:
+          failureThreshold: {{ .Values.healthCheck.failureThresholdHealthCheck }}
+          httpGet:
+            path: {{ .Values.healthCheck.pathHealthCheck }}
+            port: {{ .Values.containerPortName }}
+            scheme: HTTP
+          initialDelaySeconds: {{ .Values.healthCheck.initialDelayHealthCheck }}
+          periodSeconds: {{ .Values.healthCheck.periodHealthCheck }}
+          successThreshold: {{ .Values.healthCheck.successThresholdHealthCheck }}
+          timeoutSeconds: {{ .Values.healthCheck.timeoutHealthCheck }}
+        {{- end }}
+        {{- with .Values.deployment.sidecars}}
+        {{- toYaml | nindent 8}}
+        {{- end }}
+        resources:
+          {{- toYaml .Values.resources | nindent 12 }}
+        {{- if or (.Values.env) (.Values.vault.enabled) (.Values.addExternalConfigmaps) }}
+        envFrom:
+        {{- if .Values.env }}
+        - configMapRef:
+            name: {{ .Values.service_name }}
+        {{- end }}   
+        {{- if .Values.vault.enabled }}
+        - secretRef:
+            name: {{ .Values.service_name }}
+        {{- end }}
+        {{- range .Values.addExternalConfigmaps }}
+        - configMapRef:
+            name: {{ . }}
+        {{- end }}
+        {{- end }}
+        env:
+        - name: ENVIRONMENT
+        {{- if .Values.env.ENVIRONMENT }}
+          value: {{ .Values.env.ENVIRONMENT }}
+          {{- else }}
+          value: {{ .Values.environment }}
+        {{- end }}
+        {{- if .Values.JVM_OPTIONS }}
+        - name: JVM_OPTIONS
+          value: {{ .Values.JVM_OPTIONS }}
+        {{- end }}
+{{- if or .Values.volumes.nfs .Values.volumes.configmap .Values.volumes.pvc }}
+        volumeMounts:
+        {{- range .Values.volumes.nfs }}
+          - name: {{ .name }}
+            mountPath: {{ .mountPath }}
+        {{- end }}
+        {{- range .Values.volumes.configmap }}
+          - name: {{ .name }}
+            mountPath: {{ .mountPath }}
+        {{- end }}
+        {{- range .Values.volumes.pvc }}
+        - name: {{ .name }}
+          mountPath: {{ .mountPath }}
+        {{- end }}
+      volumes:
+        {{- range .Values.volumes.nfs }}
+        - name: {{ .name }}
+          nfs:
+            server: {{ .server }}
+            path: {{ .path }}
+        {{- end }}
+        {{- range .Values.volumes.configmap }}
+        - name: {{ .name }}
+          configMap:
+            name: {{ .name }}
+            defaultMode: {{ .defaultMode | default 0700 }}
+        {{- end }}
+        {{- range .Values.volumes.pvc }}
+        - name: {{ .name }}
+          persistentVolumeClaim:
+            claimName: {{ $.Values.service_name }}-{{ .name }}
+        {{- end }}
+{{ end }}

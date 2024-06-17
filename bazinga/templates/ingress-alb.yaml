@@ -1,0 +1,77 @@
+{{- if and ( eq  .Values.ingress.enabled true ) ( eq .Values.ingress.type "alb" ) }}
+{{- $Name := default .Values.service_name }}
+{{- $containerPortName := default .Values.containerPortName }}
+{{- $root := . -}}
+apiVersion: {{ include "ingress.apiVersion" . }}
+kind: Ingress
+metadata:
+  name: {{ .Values.service_name }}
+  labels:
+    app: {{ .Values.service_name }}
+    environment:  {{ .Values.environment }}
+  annotations:
+    {{- if .Values.ingress.acmArn }}
+    alb.ingress.kubernetes.io/certificate-arn: {{ .Values.ingress.acmArn }}
+    {{- end }}
+    {{- if .Values.ingress.public }}
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS":443}]'
+    {{- else }}
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS":443}, {"HTTP":80}]'
+    {{- end }}
+    alb.ingress.kubernetes.io/target-type: ip
+    {{- if eq .Values.healthCheck.enabled true }}
+    alb.ingress.kubernetes.io/healthcheck-path: {{ .Values.healthCheck.pathHealthCheck }}
+    {{- else }}
+    alb.ingress.kubernetes.io/healthcheck-path: /
+    alb.ingress.kubernetes.io/success-codes: 200-499
+    {{- end }}
+    alb.ingress.kubernetes.io/backend-protocol: {{ .Values.ingress.protocol | upper }}
+    {{- if .Values.ingress.whitelist }}
+    alb.ingress.kubernetes.io/inbound-cidrs: {{ .Values.ingress.whitelist }} 
+    {{- end }}
+    {{- if .Values.ingress.public }}
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    {{- else }}
+    alb.ingress.kubernetes.io/scheme: internal
+    {{- end }}
+    {{- if .Values.ingress.scheme }}
+    alb.ingress.kubernetes.io/scheme: {{ .Values.ingress.scheme }} 
+    {{- end }}
+  {{- if .Values.ingress.group_name }}
+    alb.ingress.kubernetes.io/group.name: {{ .Values.ingress.group_name }}-{{ .Values.environment }}
+  {{- else if .Values.ingress.host }}
+    alb.ingress.kubernetes.io/group.name: {{ .Values.ingress.host | trunc 60 }}
+  {{- else if eq .Values.ingress.public false}}
+    alb.ingress.kubernetes.io/group.name: api-gateway-sandbox
+  {{- end }}
+  {{- if .Values.ingress.annotations }}
+    {{ toYaml .Values.ingress.annotations }}
+  {{- end }}
+spec:
+{{- if and .Values.ingress.ingressClassName (eq (include "ingress.apiVersion" $) "networking.k8s.io/v1") }}
+  ingressClassName: {{ .Values.ingress.ingressClassName }}
+{{- end }}
+  rules:
+    - http:
+        paths:
+        {{- range .Values.ingress.paths -}}
+          {{ $path := . }}
+          - path: {{ $path | replace "/*" ""}}
+            {{- if eq (include "ingress.apiVersion" $) "networking.k8s.io/v1" }}
+            pathType: "Prefix"
+            {{- end }}
+            backend:
+            {{- if eq (include "ingress.apiVersion" $) "networking.k8s.io/v1" }}
+              service:
+                name: {{ $Name }}
+                port:
+                  name: {{ $containerPortName }}
+            {{- else }}
+              serviceName: {{ $Name }}
+              servicePort: {{ $containerPortName }}
+            {{- end }}
+        {{- end }}
+      {{- if .Values.ingress.host}}
+      host: {{ .Values.ingress.host}}
+      {{ end }}
+{{- end }}

@@ -1,0 +1,36 @@
+{{ if .Values.volumes.pvc }}
+{{ range .Values.volumes.pvc }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ $.Values.service_name }}-{{ .name }}
+  labels:
+    app: {{ $.Values.service_name | quote }}
+    app.kubernetes.io/managed-by: helm
+    app.kubernetes.io/name: {{ $.Values.service_name | quote }}
+    app.kubernetes.io/part-of: {{ $.Values.project_name | quote }}
+    app.kubernetes.io/version: {{ $.Values.image.tag | quote }}
+    environment: {{ $.Values.environment | quote }}
+    version: {{ $.Values.image.tag | quote }}
+    owner: {{ $.Values.owner | quote }}
+  {{- if .annotations }}
+  annotations:
+  {{- toYaml .annotations | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if .storageClassName }}
+  storageClassName: {{ .storageClassName }}
+  {{- end }}
+  {{- if .volumeName }}
+  volumeName: {{ .volumeName }}
+  {{- else }}
+  volumeName: {{ $.Values.service_name }}-{{ .name }}
+  {{- end }}
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .storageSize }}
+---
+{{ end }}
+{{ end }}

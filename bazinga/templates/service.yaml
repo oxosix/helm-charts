@@ -1,0 +1,29 @@
+{{- if and (.Values.service.enabled) (.Values.containerPort) -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.service_name }}
+  labels:
+    app: {{ .Values.service_name | quote }}
+    environment: {{ .Values.environment | quote }}
+    app.kubernetes.io/managed-by: helm
+    app.kubernetes.io/name: {{ .Values.service_name | quote }}
+    app.kubernetes.io/version: {{ .Values.image.tag | quote }}
+    app.kubernetes.io/part-of: {{ .Values.project_name | quote }}
+    version: {{ .Values.image.tag | quote }}
+    product:  {{ .Values.product | quote }}
+    owner: {{ .Values.owner | quote }}
+  {{- if .Values.service.annotations }}
+  annotations:
+  {{- toYaml .Values.service.annotations | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.service.serviceType }}
+  selector:
+    app: {{ .Values.service_name }}
+  ports:
+    - name: {{ .Values.containerPortName }}
+      protocol: TCP
+      port: {{ .Values.service.port }}
+      targetPort: {{ .Values.containerPortName }}
+{{- end }}

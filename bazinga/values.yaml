@@ -1,0 +1,202 @@
+# -- Nome do serviço (obrigatório)
+service_name:
+# -- Nome do projeto que o serviço faz parte (obrigatório)
+project_name:
+# -- Nome do produto que o serviço faz parte (obrigatório)
+product:
+# -- Squad responsável por esse serviço (obrigatório)
+owner:
+# -- Ambiente a qual o serviço pertence (production/sandbox/qa) (obrigatório)
+environment:
+
+
+vault:
+  # -- Habilita secrets vindo do hashicorp vault
+  enabled: false
+  # -- caminho dentro do vault secrets/
+  secretPath:
+  # -- Referência ao objeto de configuração de acesso ao vault: Default $environment-shared-vault-backend
+  ClusterSecretStore:
+
+# -- Lista de variáveis de ambiente via configmap KEY: VALUE(não segredos)
+env: {}
+  # NAME_ENVIRONMENT1: "VALUE_ENVIRONMENT1"
+  # NAME_ENVIRONMENT2: "VALUE_ENVIRONMENT2"
+
+# -- Lista de configmaps a serem adicionandos como ENVIRONMENT provenientes de outros projetos
+addExternalConfigmaps: []
+
+# -- Quantidade de pods iniciais
+replicaCount: 1
+
+image:
+  # -- Repositório da imagem docker
+  repository: 
+  # -- Tag da imagem docker
+  tag: latest
+  # -- Política de pull da imagem docker
+  pullPolicy: Always
+
+# -- Porta que a aplicação rodará
+containerPort:
+# -- Nome da porta que a aplicação rodará - https://istio.io/v1.0/docs/setup/kubernetes/spec-requirements/
+containerPortName: http 
+
+# -- Seleção de hosts onde a aplicação rodará
+nodeSelector: {}
+# -- Tolerations de hosts onde a aplicação rodará
+tolerations: []
+# -- A aplicação será multi-az?
+multi_az: true
+
+autoScaling:
+  # -- Habilita autoscaling
+  enabled: false
+  # -- Mínimo de réplicas
+  minReplicas: 1
+  # -- Máximo de réplicas
+  maxReplicas: 2
+  # -- Média de CPU (Não utilizado caso keda esteja habilitado)
+  cpuAverageUtilization: 80
+  # -- Média de Memória (Não utilizado caso keda esteja habilitado)
+  memoryAverageUtilization: 80
+  keda:
+    # -- Habilita autoscaling através do KEDA Kubernetes Event-driven Autoscaling - https://keda.sh/
+    enabled: false
+    # -- Keda pollingInterval-  https://keda.sh/docs/2.6/concepts/scaling-deployments/#pollinginterval
+    pollingInterval: 120
+    # -- Keda cooldownPeriod - https://keda.sh/docs/2.6/concepts/scaling-deployments/#cooldownperiod
+    cooldownPeriod: 300
+    # -- Keda Triggers scalers - https://keda.sh/docs/2.6/scalers/
+    triggers: []
+
+service:
+  # -- Create service 
+  enabled: true
+  # -- Service Type - https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types
+  serviceType: "ClusterIP"
+  # -- Kubernetes annotations para o componente service
+  port: 80
+  annotations: {}
+
+ingress:
+  # -- Habilita o ingress para acessos externos ao cluster
+  enabled: false
+  # -- Utiliza nlb (ingress nginx) ou alb (AWS ALB Controller).
+  type: nlb
+  # -- Ingress class name se type = alb
+  ingressClassName: alb
+  # -- Ingress ALB group (same loadbalance)
+  group_name: 
+  # -- Ingress ALB group whitelise (the same group_name must have the same whitelist)
+  whitelist: 
+  # -- Acesso via internet e não via vpn
+  public: false
+  # -- Endereço DNS do serviço. Se for uma aplicação de api-gateway deixe o host em branco.
+  host: null
+  # -- Paths que o service responderá - Não use "*"
+  paths: ["/"]
+  # -- Específica um certificado(Obrigatório caso haja dois certificados que atendam o mesmo host)
+  acmArn:
+  # -- Kubernetes annotations para o componente ingress
+  annotations: {}
+  # -- Backend protocol
+  protocol: HTTP
+
+rollingUpdate:
+  # -- Habilita a estratégia de deploy rollingUpdate. Se não for habilitado será usado a opção recreate (mata tudo e depois sobe)
+  enabled: true
+  # -- https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#max-surge
+  maxSurge: 50%
+  # -- https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#max-unavailable
+  maxUnavailable: 50%
+
+healthCheck:
+  # -- Habilita verificações da saúde da aplicação
+  enabled: true
+  # -- Caminho do helh check
+  pathHealthCheck: /
+  # -- Tempo antes de iniciar a checagem (segundos)
+  initialDelayHealthCheck: 30
+  # -- Tempo entre checages (segundos)
+  periodHealthCheck: 30
+  # -- Tempo de timeout da checagem (segundos)
+  timeoutHealthCheck: 1
+  # -- Checagens falhas antes do serviço ser consideravel não saudável
+  failureThresholdHealthCheck: 3
+  # -- Checagens com sucesso antes do serviço ser consideravel saudável
+  successThresholdHealthCheck: 1
+
+deployment:
+  entrypoint:
+    # -- Alteração do entrypoint command - Raramente necessário - https://unofficial-kubernetes.readthedocs.io/en/latest/concepts/configuration/container-command-args/
+    command:
+    # -- Alteração do entrypoint args - Raramente necessário - https://unofficial-kubernetes.readthedocs.io/en/latest/concepts/configuration/container-command-args/
+    args:
+  # -- Kubernetes annotations para o componente deployment
+  annotations: {}
+  # -- Labels extras do deployment
+  labels: {}
+  #  -- additional container added to a pod, running alongside the main application container, to provide supplementary functionalities such as logging, monitoring, security, or networking.
+  sidecars: []
+
+# Request e limits da aplicação.
+resources:
+  limits:
+    # -- CPU Limit - https://kubernetes.io/pt-br/docs/concepts/configuration/manage-resources-containers/
+    cpu: 0.5
+    # -- Memory Limit - https://kubernetes.io/pt-br/docs/concepts/configuration/manage-resources-containers/
+    memory: 1024Mi
+  requests:
+    # -- CPU requests - https://kubernetes.io/pt-br/docs/concepts/configuration/manage-resources-containers/
+    cpu: 100m
+    # -- Memory requests - https://kubernetes.io/pt-br/docs/concepts/configuration/manage-resources-containers/
+    memory: 150Mi
+
+# Volumes provenientes de configmap ou NFS. Exemplo
+# volumes:
+#   nfs: 
+#   - name: archive-generator
+#     mountPath: /opt/files
+#     path: /copiar
+#     server: nfs.teste.com
+#   configmap:
+#   - name: filestxt
+#     files:
+#       arquivo1.txt: "conteúdo do arquivo1"
+#       arquivo2.txt: "conteúdo do arquivo2"
+#     mountPath: /tmp/filestxt    
+#     defaultMode: "0777"
+#   - name: json
+#     files:
+#       arquivo1.json: "{}"
+#       arquivo2.json: "{}"
+#     mountPath: /tmp/json
+#     
+#   pvc: 
+#   - mountPath: /opt/disco_ebs
+#     name: fotos
+#     storageClassName: default
+#     storageSize: 50Gi
+#     defaultMode: "0777"
+#     volumeName: name of existing PV
+volumes:
+  # -- Volumes provenientes de configmaps (exemplo no arquivo de values)
+  configmap: []
+  # -- Volumes provenientes de servidores NFS (exemplo no arquivo de values)
+  nfs: []
+  # -- Volumes provenientes de volumes PVC (exemplo no arquivo de values)
+  pvc: []
+
+# hostaliases são registros de DNS. Raramente necessário
+# hostAliases:
+# - ip: "127.0.0.1"
+#   hostnames:
+#   - "foo.local"
+#   - "bar.local"
+# - ip: "10.1.2.3"
+#   hostnames:
+#   - "foo.remote"
+#   - "bar.remote"
+# -- hostaliases são registros de DNS. Raramente necessário - https://kubernetes.io/docs/tasks/network/customize-hosts-file-for-pods/
+hostAliases: []
