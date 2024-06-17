@@ -3,11 +3,11 @@ entries:
   Bazinga:
   - apiVersion: v1
     appVersion: "1.0"
-    created: "2024-06-17T12:01:09.770947315-03:00"
+    created: "2024-06-17T12:41:37.715399745-03:00"
     description: Helm chart genérico para serviços Kubernetes
-    digest: 74858c14db5c2ee90a8621c2c90f784b65976371f5d97a22cea7d6e965c7529d
+    digest: 37d10505835d8e809cdbc65bdc7cffb3054df338ad23f9f65dea0da3cfea6c8a
     name: Bazinga
     urls:
-    - https://d90ares.github.io/helm-charts/charts/Bazinga-1.0.0.tgz
+    - https://d90ares.github.io/helm-charts/Bazinga-1.0.0.tgz
     version: 1.0.0
-generated: "2024-06-17T12:01:09.770159185-03:00"
+generated: "2024-06-17T12:41:37.714622202-03:00"
