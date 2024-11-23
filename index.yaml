@@ -8,6 +8,6 @@ entries:
     digest: 37d10505835d8e809cdbc65bdc7cffb3054df338ad23f9f65dea0da3cfea6c8a
     name: Bazinga
     urls:
-    - https://d90ares.github.io/helm-charts/Bazinga-1.0.0.tgz
+    - https://oxosix.github.io/helm-charts/Bazinga-1.0.0.tgz
     version: 1.0.0
 generated: "2024-06-17T12:41:37.714622202-03:00"
